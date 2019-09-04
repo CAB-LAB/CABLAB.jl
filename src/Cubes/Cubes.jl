@@ -233,11 +233,13 @@ end
 getsavefolder(name) = isabspath(name) ? name : joinpath(workdir[1],name)
 
 """
-    saveCube(cube,name::String)
+    saveCube(cube,name::String; overwrite=false, chunksize=cubechunks(c),compressor=NoCompressor() )
 
-Save a [`ZarrCube`](@ref) or [`CubeMem`](@ref) to the folder `name` in the ESDL working directory.
-
-See also [`loadCube`](@ref)
+Save a [`AbstractCubeData`](@ref) `cube` to the folder `name` in the current working directory.
+When overwrite=true, the folder `name` will be replaced by the content of the `cube`.
+Chunksize can be set to change the chunksize of the saved cube. 
+ 
+See also [`loadCube`](@ref) to open a cube.
 """
 function saveCube end
 

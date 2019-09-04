@@ -92,10 +92,17 @@ Creates a description of an Output Data Cube for cube operations. Takes a single
   name (String), through an Axis type, or by passing a concrete axis.
 
 - `axisdesc`: List of input axis names
-- `genOut`: function to initialize the values of the output cube given its element type. Defaults to `zero`
-- `finalizeOut`: function to finalize the values of an output cube, defaults to identity.
-- `retCubeType`: sepcifies the type of the return cube, can be `CubeMem` to force in-memory, `TempCube` to force disk storage, or `"auto"` to let the system decide.
-- `outtype`: force the output type to a specific type, defaults to `Any` which means that the element type of the first input cube is used
+- `bcaxisdesc`: 
+- `genOut`: Function to initialize the values of the output cube given its element type. Defaults to `zero`
+- `finalizeOut`: Function to finalize the values of an output cube, defaults to identity.
+- `retCubeType`: Specify the type of the return cube, can be `CubeMem` to force in-memory, `TempCube` to force disk storage, or `"auto"` to let the system decide.
+- `update`:Specify wether a cube on the same path should be overwritten.
+- `artype`:
+- `chunksize`: Specify the chunking of the resulting cube. 
+- `compressor`: Specify the compressor, this should be a Zarr.Compressor type.
+- `path`: Specify the path on which the result should be saved, defaults to a random path in the tmp folder.
+- `persist`: Force the resulted cube to to not be finalzed after closing julia.
+- `outtype`: Force the output type to a specific type, defaults to `Any` which means that the element type of the first input cube is used
 """
 struct OutDims
   axisdesc::Tuple
@@ -124,7 +131,7 @@ function OutDims(axisdesc...;
            outtype=1)
   descs = map(get_descriptor,axisdesc)
   bcdescs = (map(get_descriptor,bcaxisdesc)...,)
-  isa(artype,AsDataFrame) && length(descs)!=2 && error("DataFrame representation only possible if for 2D inner arrays")
+  isa(artype,AsDataFrame) && length(descs)!=2 && error("DataFrame representation only possible for 2D inner arrays")
   if path === nothing
     path = tempname()[2:end]
     persist = false
