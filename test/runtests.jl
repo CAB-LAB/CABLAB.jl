@@ -14,10 +14,12 @@ cgermany = c[
 savecube(cgermany,"germanycube",
   chunksize=Dict("lon"=>20,"lat"=>20,"time"=>92))
 YAXArrays.YAXDefaults.cubedir[] = joinpath(newcubedir,"germanycube")
+
 include("access.jl")
 include("analysis.jl")
 #include("artype.jl")
 include("transform.jl")
 include("remap.jl")
+include("shapes.jl")
 include("table.jl")
 include("tabletocube.jl")

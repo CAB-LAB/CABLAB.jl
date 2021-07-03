@@ -24,12 +24,12 @@ function aggregate_out(allout, highmat, labelsleft,n)
   map!(i->i/(n*n),allout,allout)
 end
 
-function cubefromshape_fraction(shapepath,lonaxis,lataxis;labelsym=nothing, T=Float64, nincrease=10)
+function cubefromshape_fraction(shapepath,lonaxis,lataxis;labelsym=nothing, T=Float64, nincrease=10, kwargs...)
   s = (length(lonaxis), length(lataxis))
   outmat = zeros(T,s.*nincrease)
   lon1,lon2 = get_bb(lonaxis)
   lat1,lat2 = get_bb(lataxis)
-  rasterize!(outmat, shapepath, bb = (left = lon1, right=lon2, top=lat1, bottom=lat2))
+  rasterize!(outmat, shapepath, bb = (left = lon1, right=lon2, top=lat1, bottom=lat2); kwargs...)
 
   outmat = replace(outmat,zero(T)=>missing)
   labelsleft = collect(skipmissing(unique(outmat)))
@@ -48,12 +48,12 @@ function cubefromshape_fraction(shapepath,lonaxis,lataxis;labelsym=nothing, T=Fl
 
 
 end
-function cubefromshape_single(shapepath, lonaxis, lataxis; labelsym = nothing, T=Int32)
+function cubefromshape_single(shapepath, lonaxis, lataxis; labelsym = nothing, T=Int32, kwargs...)
   s = (length(lonaxis), length(lataxis))
   outmat = zeros(T,s)
   lon1,lon2 = get_bb(lonaxis)
   lat1,lat2 = get_bb(lataxis)
-  rasterize!(outmat, shapepath, bb = (left = lon1, right=lon2, top=lat1, bottom=lat2))
+  rasterize!(outmat, shapepath, bb = (left = lon1, right=lon2, top=lat1, bottom=lat2); kwargs...)
 
   outmat = replace(outmat,zero(T)=>missing)
   labelsleft = collect(skipmissing(unique(outmat)))
@@ -91,19 +91,20 @@ function prune_labels!(c::YAXArray)
 end
 stripc0x(a) = replace(a, r"[^\x20-\x7e]"=> "")
 
-function rasterize!(outar,shapepath;bb = (left = -180.0, right=180.0, top=90.0,bottom=-90.0),label=nothing)
+function rasterize!(outar,shapepath;bb = (left = -180.0, right=180.0, top=90.0,bottom=-90.0),label=nothing, kwargs...)
   t = Shapefile.Table(shapepath)
   p = Shapefile.shapes(t)
   if length(p)>1
-    rasterizepoly!(outar,p,bb)
+    rasterizepoly!(outar,p,bb; kwargs...)
   else
-    rasterizepoly!(outar,p[1],bb)
+    rasterizepoly!(outar,p[1],bb; kwargs... )
   end
 end
 
-function rasterizepoly!(outmat,poly::Vector{<:Union{Missing,AbstractMultiPolygon}},bb)
+function rasterizepoly!(outmat,poly::Vector{<:Union{Missing,AbstractMultiPolygon}},bb;wrap= (left=-180, right=180))
     foreach(1:length(poly)) do ipoly
-        rasterizepoly!(outmat,poly[ipoly],bb,value=ipoly)
+      @show ipoly
+        rasterizepoly!(outmat,poly[ipoly],bb,value=ipoly; wrap=wrap)
     end
     outmat
 end
@@ -114,7 +115,6 @@ resx = (bb.right-bb.left)/nx
 resy = (bb.top-bb.bottom)/ny
 xr = range(bb.left+resx/2,bb.right-resx/2,length=nx)
 yr = range(bb.top-resy/2,bb.bottom+resy/2,length=ny)
-wrapwidth = wrap.right-wrap.left
 
 for (iy,pixelY) in enumerate(yr)
     nodeX = Float64[]
@@ -122,8 +122,11 @@ for (iy,pixelY) in enumerate(yr)
     for i = 1:length(poly)
         p1 = poly[i]
         p2 = poly[j]
-        if wrap !==nothing && abs(p1.x-p2.x)>wrapwidth
+        if wrap !==nothing 
+          wrapwidth = wrap.right-wrap.left
+          if abs(p1.x-p2.x)>wrapwidth
             p1,p2 = p1.x < p2.x ? (T(p1.x+wrapwidth,p1.y),T(p2.x,p2.y)) : (T(p1.x,p1.y),T(p2.x+wrapwidth,p2.y))
+          end
         end
         if (p1.y < pixelY) && (p2.y >= pixelY) || (p2.y < pixelY) && (p1.y >= pixelY)
             push!(nodeX, p1.x + (pixelY-p1.y)/(p2.y-p1.y)*(p2.x-p1.x))
@@ -132,6 +135,7 @@ for (iy,pixelY) in enumerate(yr)
     end
     #Add intersect points at start and end for wrapped polygons
     if wrap!==nothing && any(i->i>wrap.right,nodeX)
+        wrapwidth = wrap.right-wrap.left
         push!(nodeX,wrap.left)
         push!(nodeX,wrap.right)
         map!(i->i>wrap.right ? i-wrapwidth : i,nodeX,nodeX)
@@ -145,14 +149,15 @@ end
     outmat
 end
 
-function rasterizepoly!(outmat,pp::Shapefile.Polygon,bb;value=one(eltype(outmat)))
+function rasterizepoly!(outmat,pp::Shapefile.Polygon,bb;value=one(eltype(outmat)), kwargs...)
+  
     points = map(1:length(pp.parts)) do ipart
         i0 = pp.parts[ipart]+1
         iend = ipart == length(pp.parts) ? length(pp.points) : pp.parts[ipart+1]
         pp.points[i0:iend]
     end
     foreach(1:length(points)) do ipoly
-        rasterizepoly!(outmat,points[ipoly],bb,value=value)
+        rasterizepoly!(outmat,points[ipoly],bb,value=value; kwargs...)
     end
     outmat
 end
