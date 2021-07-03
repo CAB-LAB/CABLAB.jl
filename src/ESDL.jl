@@ -33,6 +33,7 @@ using NetCDF: NetCDF
 using Zarr: Zarr
 
 include("cubeinfo.jl")
+include("getCubeSlices.jl")
 
 using YAXArrays: YAXDefaults
 function __init__()
